@@ -1,15 +1,13 @@
 from machine import Pin, SPI
 import st7789py as st7789
-#import random
 
 #Connects to the network
 def netConnect():
     import network
     sta_if = network.WLAN(network.STA_IF)
-    ap_if = network.WLAN(network.AP_IF)
 
     sta_if.active(True)
-    sta_if.connect('{ESSID}', '{PASSWORD}') #Fill in your wifi network name and password
+    sta_if.connect('{ESSID}', '{PASSWORD}')
     while not sta_if.isconnected():
             pass
 
@@ -18,10 +16,7 @@ def getWebData():
     import urequest
     import json
 
-    url = "{YOUR JSON API URL}"
-    data = urequest.urlopen(url).read().decode('utf-8', 'ignore')
-
-    return json.loads(data)
+    return json.loads(urequest.urlopen("{YOUR JSON API URL}").read().decode('utf-8', 'ignore'))
 
 #Aligns a numeric value to a given length
 #pos -1: align left, pos 0: align center, pos 1: align right
@@ -59,8 +54,8 @@ def main():
         rotation=1)
 
     #Print init message to serial and display
-    print("Corona tracker v1.1, Dex&Delly&Meow&jklk 03/2020")
-    tft.text(smallfont, "Corona tracker v1.1", 5, 5,
+    print("Corona tracker v1.2, Dex&Delly&Meow&jklk 03/2020")
+    tft.text(smallfont, "Corona tracker v1.2", 5, 5,
         st7789.color565(255, 255, 255),
         st7789.color565(0, 0, 0)
     )
@@ -71,11 +66,9 @@ def main():
 
     #Connect to WLAN
     netConnect()
-    print("Connected to WLAN!")
 
     #Display loop
     import time
-    bigDisplay = False
     apiUpdateIn = 0
     while True:
         if apiUpdateIn == 0:
@@ -83,15 +76,14 @@ def main():
             inJson = getWebData()
             print("API Data retrieved!")
 
-            #Keys and values might differ based on which API is used
             countTested = inJson['totalTested']
             countInfected = inJson['infected']
             countRecovered = inJson['recovered']
-            countDead = 0 #TODO add proper readout once the API changes
+            countDead = inJson['dead']
             lastUpdate = inJson['lastUpdatedAtSource'].replace("T", " ").replace("Z", "")
             infectedPrague = inJson['infectedPrague']
-            inJson = 0
             apiUpdateIn = 10
+            del inJson
 
         else:
             apiUpdateIn = apiUpdateIn - 1
@@ -100,7 +92,7 @@ def main():
         tft.fill(0)
 
         #Basic info
-        if bigDisplay:
+        if apiUpdateIn % 2 == 0:
             #Only numbers (better visibility)
             tft.text(biggestfont, alignValue(countInfected, 5, -1), 5, 5,
                 st7789.color565(255, 255, 255),
@@ -129,11 +121,6 @@ def main():
                 st7789.color565(170, 170, 0)
             )
 
-            #tft.text(bigfont, "Prg: " + str(countInfected), 5, 25,
-            #    st7789.color565(255, 255, 255),
-            #    st7789.color565(170, 170, 0)
-            #)
-
             tft.text(bigfont, "Dead: " + str(countDead), 5, 25,
                 st7789.color565(255, 255, 255),
                 st7789.color565(170, 0, 0)
@@ -160,8 +147,7 @@ def main():
             st7789.color565(0, 0, 0)
         )
 
-        #Sitch display style every 10s
-        bigDisplay = not bigDisplay
+        #Refresh display every 10s
         time.sleep(10)
 
 main()
